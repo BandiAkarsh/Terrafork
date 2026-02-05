@@ -9,6 +9,9 @@
     "check": "svelte-kit sync && tsc || true",
     "check:watch": "svelte-kit sync && tsc -w || true"
   },
+  "dependencies": {
+    "@forkzero/core-types": "workspace:*"
+  },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.0",
     "@sveltejs/kit": "^2.0.0",
