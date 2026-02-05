@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  # Frontend
+  web:
+    build: 
+      context: ./apps/web
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+    environment:
+      - PUBLIC_API_URL=http://localhost:8000
+      - PUBLIC_REALTIME_URL=ws://localhost:3000
+
+  # Microservice 1: Scraper (Python)
+  scraper:
+    build: 
+      context: ./services/scraper
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./services/scraper:/app
+
+  # Microservice 2: Realtime (Node)
+  realtime:
+    build: 
+      context: ./services/realtime
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./services/realtime:/app
