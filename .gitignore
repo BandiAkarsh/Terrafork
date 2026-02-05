@@ -1,0 +1,19 @@
+# Node
+node_modules/
+dist/
+build/
+.env
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+env/
+
+# SvelteKit
+.svelte-kit/
+
+# Docker
+.docker/
