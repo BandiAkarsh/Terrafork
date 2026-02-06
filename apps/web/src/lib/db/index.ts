@@ -85,10 +85,11 @@ export async function getAllRecipes(): Promise<Recipe[]> {
         yields: string | null;
         image: string | null;
         ingredients: string;
+        instructions: string;
         host: string | null;
         url: string;
     }>(
-        'SELECT id, title, total_time, yields, image, ingredients, host, url FROM recipes ORDER BY created_at DESC'
+        'SELECT id, title, total_time, yields, image, ingredients, instructions, host, url FROM recipes ORDER BY created_at DESC'
     );
     
     return result.rows.map(row => ({
@@ -98,7 +99,7 @@ export async function getAllRecipes(): Promise<Recipe[]> {
         yields: row.yields || undefined,
         image: row.image || undefined,
         ingredients: JSON.parse(row.ingredients),
-        instructions: '', // Not needed for list view (Green: Save memory)
+        instructions: row.instructions,
         host: row.host || undefined,
         url: row.url
     }));
@@ -114,6 +115,7 @@ export async function getRecipeById(id: string): Promise<Recipe | null> {
         yields: string | null;
         image: string | null;
         ingredients: string;
+        instructions: string;
         instructions: string;
         nutrients: string | null;
         host: string | null;
@@ -156,6 +158,7 @@ export async function exportAllRecipes(): Promise<Recipe[]> {
         yields: string | null;
         image: string | null;
         ingredients: string;
+        instructions: string;
         instructions: string;
         nutrients: string | null;
         host: string | null;

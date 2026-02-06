@@ -9,6 +9,7 @@
     let recipes = $state<Recipe[]>([]);
     let loading = $state(true);
     let deletingId = $state<string | null>(null);
+    let expandedId = $state<string | null>(null);
     let showQR = $state(false);
     let qrDataUrl = $state('');
     let isExporting = $state(false);
@@ -154,7 +155,13 @@
             {#each recipes as recipe (recipe.id)}
                 <div class="bg-zinc-900/50 p-6 rounded-xl border border-zinc-800 hover:border-zinc-700 transition-colors">
                     <div class="flex justify-between items-start">
-                        <div class="flex-1">
+                        <div 
+                            class="flex-1 cursor-pointer" 
+                            onclick={() => expandedId = expandedId === recipe.id ? null : recipe.id}
+                            role="button"
+                            tabindex="0"
+                            onkeydown={(e) => e.key === 'Enter' && (expandedId = expandedId === recipe.id ? null : recipe.id)}
+                        >
                             <h2 class="text-xl font-bold text-white mb-2">{recipe.title}</h2>
                             <div class="flex gap-4 text-sm text-zinc-400 mb-3">
                                 <span>⏱ {recipe.total_time || 'N/A'}</span>
@@ -165,14 +172,46 @@
                                 Source: {recipe.host || 'Unknown'}
                             </p>
                         </div>
-                        <button
-                            onclick={() => handleDelete(recipe.id)}
-                            disabled={deletingId === recipe.id}
-                            class="ml-4 px-3 py-1 bg-red-900/20 hover:bg-red-900/40 text-red-400 rounded text-sm transition-colors disabled:opacity-50"
-                        >
-                            {deletingId === recipe.id ? '...' : '🗑'}
-                        </button>
+                        <div class="flex gap-2 ml-4">
+                            <button
+                                onclick={() => expandedId = expandedId === recipe.id ? null : recipe.id}
+                                class="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-sm transition-colors"
+                            >
+                                {expandedId === recipe.id ? 'Collapse' : 'Expand'}
+                            </button>
+                            <button
+                                onclick={() => handleDelete(recipe.id)}
+                                disabled={deletingId === recipe.id}
+                                class="px-3 py-1 bg-red-900/20 hover:bg-red-900/40 text-red-400 rounded text-sm transition-colors disabled:opacity-50"
+                            >
+                                {deletingId === recipe.id ? '...' : '🗑'}
+                            </button>
+                        </div>
                     </div>
+                    
+                    {#if expandedId === recipe.id}
+                        <div class="mt-6 pt-6 border-t border-zinc-800 animate-in fade-in slide-in-from-top-2 duration-200">
+                             <h3 class="text-lg font-bold text-white mb-3">Ingredients</h3>
+                             {#if recipe.ingredients.length > 0}
+                                 <ul class="list-disc list-inside text-zinc-300 space-y-1 mb-6">
+                                    {#each recipe.ingredients as ingredient}
+                                        <li>{ingredient}</li>
+                                    {/each}
+                                 </ul>
+                             {:else}
+                                 <p class="text-zinc-500 mb-6 italic">No ingredients found.</p>
+                             {/if}
+                             
+                             <h3 class="text-lg font-bold text-white mb-3">Instructions</h3>
+                             {#if recipe.instructions}
+                                 <div class="text-zinc-300 whitespace-pre-wrap leading-relaxed">
+                                    {recipe.instructions}
+                                 </div>
+                             {:else}
+                                 <p class="text-zinc-500 italic">No instructions found.</p>
+                             {/if}
+                        </div>
+                    {/if}
                 </div>
             {/each}
         </div>
