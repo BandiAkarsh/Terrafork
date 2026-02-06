@@ -83,7 +83,7 @@ docker-compose up
 
 ### Access Points
 - **Frontend:** http://localhost:5173
-- **Scraper API:** http://localhost:8000
+- **Scraper API:** http://localhost:8788
 
 ---
 

@@ -6,7 +6,7 @@ The TerraFork Scraper is a Cloudflare Worker that extracts structured recipe dat
 
 ## Base URL
 
-- **Development:** `http://localhost:8000`
+- **Development:** `http://localhost:8788`
 - **Production:** `https://terrafork-scraper.workers.dev`
 
 ## Endpoints
