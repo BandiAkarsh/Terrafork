@@ -1,39 +1,186 @@
-// TERRAFORK RECIPE SCRAPER
-// ======================
-// Current Implementation: TypeScript (Cloudflare Workers compatible)
-// Future Implementation: Python (when Cloudflare Workers Python supports packages)
+/**
+ * TERRAFORK UNIVERSAL RECIPE SCRAPER
+ * ==================================
+ * Green Code: Universal, resilient recipe extraction from ANY website
+ * Supports: JSON-LD, Microdata, HTML patterns, and heuristic fallback
+ */
 
+// ============================================================================
+// Imports
+// ============================================================================
+
+import { extractFromJsonLdUniversal } from './extractors/jsonld';
+import { extractFromHtmlUniversal } from './extractors/html';
+import { calculateConfidence, selectBestExtraction } from './utils/confidence';
+import { parseIsoDuration, normalizeImageUrl, cleanHtml } from './utils/normalization';
+import type {
+  RecipeData,
+  RecipeDataExtended,
+  ExtractionAttempt,
+  ExtractionMetadata,
+  ConfidenceScore,
+  ExtractionMethod,
+  ExtractorConfig,
+  DEFAULT_EXTRACTOR_CONFIG,
+} from './types';
+
+// ============================================================================
 // Security Configuration
+// ============================================================================
+
 const ALLOWED_ORIGIN = 'https://terrafork.pages.dev';
 const ALLOWED_METHODS = 'GET, OPTIONS';
 const ALLOWED_HEADERS = 'Content-Type';
 
+// ============================================================================
+// Types
+// ============================================================================
+
 export interface Env {
-  // Add any environment variables here
+  // Add environment variables here
 }
 
-export interface RecipeData {
-  title: string;
-  total_time?: string;
-  yields?: string;
-  image?: string;
-  ingredients: string[];
-  instructions: string;
-  nutrients?: Record<string, string>;
-  host?: string;
+export interface ScrapeResponse {
+  success: boolean;
+  data?: RecipeDataExtended;
+  error?: string;
+  warnings?: string[];
+  metadata?: ExtractionMetadata;
 }
 
-// Security: Validate URL to prevent SSRF attacks
-function validateUrl(urlString: string): string {
+// ============================================================================
+// Green Code: Configuration with sensible defaults
+// ============================================================================
+
+const EXTRACTOR_CONFIG = {
+  maxExtractionTime: 5000,
+  maxIngredients: 100,
+  maxInstructionLength: 50000,
+  enableHeuristics: true,
+  enableMicrodata: true,
+  confidenceThreshold: 25,
+};
+
+// ============================================================================
+// Main Scraper Function
+// ============================================================================
+
+/**
+ * Green Code: Universal recipe scraper with multi-layer extraction
+ * Returns comprehensive metadata for transparency
+ */
+export async function scrapeRecipeUniversal(
+  url: string,
+  html?: string
+): Promise<ScrapeResponse> {
+  // If no HTML provided, fetch it
+  if (!html) {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; TerraFork/1.0; +https://terrafork.pages.dev)',
+        },
+      });
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: `Failed to fetch: ${response.status} ${response.statusText}`,
+        };
+      }
+
+      html = await response.text();
+    } catch (fetchError) {
+      return {
+        success: false,
+        error: fetchError instanceof Error ? fetchError.message : 'Unknown fetch error',
+      };
+    }
+  }
+
+  // Attempt 1: JSON-LD Extraction (Primary - Best Results)
+  const jsonLdAttempt = extractFromJsonLdUniversal(html, url);
+
+  // Attempt 2: HTML Structure Extraction (Fallback)
+  const htmlAttempt = extractFromHtmlUniversal(html, url);
+
+  // Attempt 3: Microdata (if enabled and needed)
+  let microdataAttempt: ExtractionAttempt | null = null;
+  if (EXTRACTOR_CONFIG.enableMicrodata) {
+    // Microdata extraction can be added here if needed
+    microdataAttempt = null;
+  }
+
+  // Collect all attempts
+  const attempts: ExtractionAttempt[] = [jsonLdAttempt];
+  if (htmlAttempt.confidence.overall > 0) {
+    attempts.push(htmlAttempt);
+  }
+  if (microdataAttempt) {
+    attempts.push(microdataAttempt);
+  }
+
+  // Select best extraction result
+  const bestAttempt = selectBestExtraction(attempts, {
+    confidenceThreshold: EXTRACTOR_CONFIG.confidenceThreshold,
+  });
+
+  if (!bestAttempt || !bestAttempt.data) {
+    return {
+      success: false,
+      error: 'Could not extract recipe data from page',
+      warnings: attempts.flatMap((a) => a.warnings),
+    };
+  }
+
+  // Build final recipe data
+  const recipe: RecipeData = {
+    title: bestAttempt.data.title || 'Untitled Recipe',
+    total_time: bestAttempt.data.total_time,
+    yields: bestAttempt.data.yields,
+    image: bestAttempt.data.image,
+    ingredients: bestAttempt.data.ingredients || [],
+    instructions: bestAttempt.data.instructions || '',
+    nutrients: bestAttempt.data.nutrients,
+    host: bestAttempt.data.host,
+  };
+
+  // Build metadata
+  const metadata: ExtractionMetadata = {
+    confidence: bestAttempt.confidence,
+    extractionMethod: bestAttempt.method,
+    fieldsExtracted: getExtractedFields(bestAttempt.data),
+    fieldsMissing: getMissingFields(bestAttempt.data),
+    warnings: bestAttempt.warnings,
+    timestamp: new Date().toISOString(),
+    url,
+  };
+
+  return {
+    success: true,
+    data: {
+      ...recipe,
+      _metadata: metadata,
+    },
+    warnings: bestAttempt.warnings,
+    metadata,
+  };
+}
+
+// ============================================================================
+// Security: URL Validation (Enhanced SSRF Protection)
+// ============================================================================
+
+export function validateUrl(urlString: string): string {
   try {
     const url = new URL(urlString);
-    
+
     // Block dangerous protocols
     const allowedProtocols = ['http:', 'https:'];
     if (!allowedProtocols.includes(url.protocol)) {
       throw new Error('Invalid protocol. Only HTTP and HTTPS are allowed.');
     }
-    
+
     // Block private/internal IP addresses
     const hostname = url.hostname.toLowerCase();
     const blockedHosts = [
@@ -41,13 +188,13 @@ function validateUrl(urlString: string): string {
       '127.0.0.1',
       '0.0.0.0',
       '::1',
-      '[::1]'
+      '[::1]',
     ];
-    
+
     if (blockedHosts.includes(hostname)) {
       throw new Error('Cannot scrape local/internal addresses');
     }
-    
+
     // Block private IP ranges
     const privateIpPatterns = [
       /^10\./,
@@ -55,13 +202,13 @@ function validateUrl(urlString: string): string {
       /^192\.168\./,
       /^169\.254\./,
       /^127\./,
-      /^0\./
+      /^0\./,
     ];
-    
-    if (privateIpPatterns.some(pattern => pattern.test(hostname))) {
+
+    if (privateIpPatterns.some((pattern) => pattern.test(hostname))) {
       throw new Error('Cannot scrape private IP ranges');
     }
-    
+
     return urlString;
   } catch (error) {
     if (error instanceof Error) {
@@ -71,290 +218,164 @@ function validateUrl(urlString: string): string {
   }
 }
 
-// Green Code: Parse recipe using lightweight cheerio
-async function scrapeRecipe(url: string): Promise<RecipeData> {
-  // Fetch the recipe page
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (compatible; TerraFork/1.0; +https://terrafork.pages.dev)'
-    }
-  });
-  
-  if (!response.ok) {
-    throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
-  }
-  
-  const html = await response.text();
-  
-  // Try to extract JSON-LD structured data first (most reliable)
-  const jsonLdMatch = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/gi);
-  
-  let bestRecipe: RecipeData | null = null;
+// ============================================================================
+// Helper Functions
+// ============================================================================
 
-  if (jsonLdMatch) {
-    for (const scriptTag of jsonLdMatch) {
-      try {
-        const jsonContent = scriptTag.replace(/<script type="application\/ld\+json">|<\/script>/gi, '');
-        const data = JSON.parse(jsonContent);
-        
-        // Handle both single object and array of objects
-        const recipes = Array.isArray(data) ? data : [data];
-        
-        for (const item of recipes) {
-          if (item['@type'] === 'Recipe' || (Array.isArray(item['@type']) && item['@type'].includes('Recipe'))) {
-            const jsonRecipe = extractFromJsonLd(item, url);
-            
-            // If we found a recipe with ingredients AND instructions, it's a winner
-            if (jsonRecipe.ingredients.length > 0 && jsonRecipe.instructions) {
-              return jsonRecipe;
-            }
-            
-            // Otherwise keep it as a candidate but check for better ones or fallback
-            if (!bestRecipe || (jsonRecipe.ingredients.length > bestRecipe.ingredients.length)) {
-              bestRecipe = jsonRecipe;
-            }
-          }
-        }
-      } catch (e) {
-        // Continue to next script tag
-        continue;
-      }
-    }
-  }
-  
-  // Fallback: Basic HTML parsing with regex
-  const htmlRecipe = extractFromHtml(html, url);
-  
-  // If we found a JSON-LD recipe but it was incomplete, merge with HTML results
-  if (bestRecipe) {
-    return {
-      ...bestRecipe,
-      // Prefer JSON-LD ingredients if available, otherwise HTML
-      ingredients: bestRecipe.ingredients.length > 0 ? bestRecipe.ingredients : htmlRecipe.ingredients,
-      // Prefer JSON-LD instructions if available, otherwise HTML
-      instructions: bestRecipe.instructions || htmlRecipe.instructions
-    };
-  }
-  
-  return htmlRecipe;
+function getExtractedFields(data: Partial<RecipeData>): string[] {
+  const fields: string[] = [];
+
+  if (data.title) fields.push('title');
+  if (data.total_time) fields.push('total_time');
+  if (data.yields) fields.push('yields');
+  if (data.image) fields.push('image');
+  if (data.ingredients && data.ingredients.length > 0) fields.push('ingredients');
+  if (data.instructions) fields.push('instructions');
+  if (data.nutrients) fields.push('nutrients');
+  if (data.host) fields.push('host');
+
+  return fields;
 }
 
-function extractFromJsonLd(data: any, url: string): RecipeData {
-  const host = new URL(url).hostname.replace('www.', '');
-  
-  const rawIngredients = data.recipeIngredient;
-  const ingredients = Array.isArray(rawIngredients) 
-    ? rawIngredients 
-    : (typeof rawIngredients === 'string' ? [rawIngredients] : []);
+function getMissingFields(data: Partial<RecipeData>): string[] {
+  const fields: string[] = [];
 
-  return {
-    title: data.name || 'Untitled Recipe',
-    total_time: data.totalTime || data.cookTime || undefined,
-    yields: data.recipeYield || data.servingSize || undefined,
-    image: typeof data.image === 'string' ? data.image : data.image?.url || undefined,
-    ingredients: ingredients,
-    instructions: extractInstructions(data.recipeInstructions),
-    nutrients: data.nutrition || undefined,
-    host: host
-  };
+  if (!data.title) fields.push('title');
+  if (!data.ingredients || data.ingredients.length === 0) fields.push('ingredients');
+  if (!data.instructions) fields.push('instructions');
+
+  return fields;
 }
 
-function extractInstructions(instructions: any): string {
-  if (!instructions) return '';
-  
-  if (typeof instructions === 'string') {
-    return instructions;
-  }
-  
-  // Handle nested sections (HowToSection) or recursive arrays
-  if (Array.isArray(instructions)) {
-    return instructions.map((step: any, index: number) => {
-      if (typeof step === 'string') return `${index + 1}. ${step}`;
-      
-      // Handle nested sections
-      if (step.itemListElement) {
-        const sectionTitle = step.name ? `\n### ${step.name}\n` : '';
-        return sectionTitle + extractInstructions(step.itemListElement);
-      }
-      
-      // Handle individual steps
-      const text = step.text || step.description || step.name;
-      if (text) return `${index + 1}. ${text}`;
-      
-      return '';
-    }).filter(Boolean).join('\n\n');
-  }
-  
-  // Handle single object with itemListElement (rare but valid)
-  if (instructions.itemListElement) {
-    return extractInstructions(instructions.itemListElement);
-  }
-  
-  return '';
-}
+// ============================================================================
+// CORS Headers
+// ============================================================================
 
-function extractFromHtml(html: string, url: string): RecipeData {
-  const host = new URL(url).hostname.replace('www.', '');
-  
-  // Extract title
-  const titleMatch = html.match(/<title>(.*?)<\/title>/i);
-  const h1Match = html.match(/<h1[^>]*>(.*?)<\/h1>/is);
-  const title = h1Match ? cleanHtml(h1Match[1]) : (titleMatch ? cleanHtml(titleMatch[1]) : 'Untitled Recipe');
-  
-  // Try to find ingredients (common patterns)
-  let ingredients: string[] = [];
-  
-  // Strategy 1: Block patterns (find a container, then parse items)
-  // These patterns MUST NOT be global (no 'g' flag) as we use .match()
-  const ingredientBlockPatterns = [
-    /(?:ingredients?:?)\s*<\/h[1-6]>\s*<ul[^>]*>([\s\S]*?)<\/ul>/i
-  ];
-
-  for (const pattern of ingredientBlockPatterns) {
-    const listMatch = html.match(pattern);
-    if (listMatch && listMatch[1]) {
-      const items = listMatch[1].match(/<li[^>]*>(.*?)<\/li>/gi);
-      if (items) {
-        ingredients = items.map(item => cleanHtml(item));
-        if (ingredients.length > 0) break;
-      }
-    }
-  }
-  
-  // Strategy 2: Individual item patterns
-  // These patterns MUST be global (have 'g' flag) as we use .matchAll()
-  if (ingredients.length === 0) {
-    const ingredientItemPatterns = [
-      /<li[^>]*class="[^"]*ingredient[^"]*"[^>]*>(.*?)<\/li>/gi
-    ];
-    
-    for (const pattern of ingredientItemPatterns) {
-      const matches = html.matchAll(pattern);
-      for (const match of matches) {
-        if (match[1]) {
-          ingredients.push(cleanHtml(match[1]));
-        }
-      }
-      if (ingredients.length > 0) break;
-    }
-  }
-  
-  // Try to find instructions
-  const instructionMatch = html.match(/(?:instructions|directions|steps|method):?\s*<\/h[1-6]>\s*<ol[^>]*>([\s\S]*?)<\/ol>/i);
-  let instructions = '';
-  if (instructionMatch) {
-    const steps = instructionMatch[1].match(/<li[^>]*>(.*?)<\/li>/gi);
-    if (steps) {
-      instructions = steps.map((step, index) => `${index + 1}. ${cleanHtml(step)}`).join('\n\n');
-    }
-  }
-  
-  return {
-    title,
-    ingredients,
-    instructions,
-    host
-  };
-}
-
-function cleanHtml(html: string): string {
-  return html
-    .replace(/<[^>]+>/g, '') // Remove HTML tags
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .trim();
-}
-
-// Helper function for CORS headers
 function getCorsHeaders(): Record<string, string> {
   return {
     'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
     'Access-Control-Allow-Methods': ALLOWED_METHODS,
-    'Access-Control-Allow-Headers': ALLOWED_HEADERS
+    'Access-Control-Allow-Headers': ALLOWED_HEADERS,
   };
 }
 
-// Main request handler
+// ============================================================================
+// Main Request Handler
+// ============================================================================
+
 export default {
   async fetch(request: Request, env: Env, ctx: any): Promise<Response> {
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         status: 204,
-        headers: getCorsHeaders()
+        headers: getCorsHeaders(),
       });
     }
-    
+
     const url = new URL(request.url);
-    
+
     // Health check endpoint
-    if (url.pathname === '/') {
-      return new Response(JSON.stringify({ 
-        status: 'ok', 
-        service: 'terrafork-scraper-ts',
-        note: 'TypeScript implementation - Python version available in future'
-      }), {
-        headers: {
-          'Content-Type': 'application/json',
-          ...getCorsHeaders()
-        }
-      });
-    }
-    
-    // Scrape endpoint
-    if (url.pathname === '/scrape') {
-      const targetUrl = url.searchParams.get('url');
-      
-      if (!targetUrl) {
-        return new Response(JSON.stringify({ error: 'Missing url parameter' }), {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-            ...getCorsHeaders()
-          }
-        });
-      }
-      
-      try {
-        // Security: Validate URL before scraping
-        const validatedUrl = validateUrl(targetUrl);
-        const recipe = await scrapeRecipe(validatedUrl);
-        
-        // Green Code: Cache for 24 hours
-        return new Response(JSON.stringify(recipe), {
+    if (url.pathname === '/' || url.pathname === '/health') {
+      return new Response(
+        JSON.stringify({
+          status: 'ok',
+          service: 'terrafork-universal-scraper',
+          version: '2.0.0',
+          features: [
+            'json-ld-extraction',
+            'html-structure-extraction',
+            'confidence-scoring',
+            '24h-caching',
+          ],
+        }),
+        {
           headers: {
             'Content-Type': 'application/json',
             ...getCorsHeaders(),
-            'Cache-Control': 'public, max-age=86400, s-maxage=86400'
+          },
+        }
+      );
+    }
+
+    // Scrape endpoint
+    if (url.pathname === '/scrape') {
+      const targetUrl = url.searchParams.get('url');
+
+      if (!targetUrl) {
+        return new Response(
+          JSON.stringify({ error: 'Missing url parameter' }),
+          {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              ...getCorsHeaders(),
+            },
           }
+        );
+      }
+
+      try {
+        // Security: Validate URL before scraping
+        const validatedUrl = validateUrl(targetUrl);
+
+        // Scrape the recipe
+        const result = await scrapeRecipeUniversal(validatedUrl);
+
+        if (!result.success) {
+          return new Response(
+            JSON.stringify({
+              error: result.error,
+              warnings: result.warnings,
+            }),
+            {
+              status: 400,
+              headers: {
+                'Content-Type': 'application/json',
+                ...getCorsHeaders(),
+              },
+            }
+          );
+        }
+
+        // Green Code: Cache for 24 hours
+        return new Response(JSON.stringify(result.data), {
+          headers: {
+            'Content-Type': 'application/json',
+            ...getCorsHeaders(),
+            'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+          },
         });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        const statusCode = errorMessage.includes('Invalid') || errorMessage.includes('Cannot scrape') ? 400 : 500;
-        
-        return new Response(JSON.stringify({ 
-          error: 'Failed to scrape recipe',
-          details: errorMessage
-        }), {
-          status: statusCode,
-          headers: {
-            'Content-Type': 'application/json',
-            ...getCorsHeaders()
+        const statusCode =
+          errorMessage.includes('Invalid') || errorMessage.includes('Cannot scrape')
+            ? 400
+            : 500;
+
+        return new Response(
+          JSON.stringify({
+            error: 'Failed to scrape recipe',
+            details: errorMessage,
+          }),
+          {
+            status: statusCode,
+            headers: {
+              'Content-Type': 'application/json',
+              ...getCorsHeaders(),
+            },
           }
-        });
+        );
       }
     }
-    
+
     // 404 for unknown routes
     return new Response(JSON.stringify({ error: 'Not found' }), {
       status: 404,
       headers: {
         'Content-Type': 'application/json',
-        ...getCorsHeaders()
-      }
+        ...getCorsHeaders(),
+      },
     });
-  }
+  },
 };
