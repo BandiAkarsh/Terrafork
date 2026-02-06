@@ -10,7 +10,8 @@
     "check:watch": "svelte-kit sync && tsc -w || true"
   },
   "dependencies": {
-    "@forkzero/core-types": "workspace:*"
+    "@forkzero/core-types": "workspace:*",
+    "@electric-sql/pglite": "^0.2.5"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.0",
