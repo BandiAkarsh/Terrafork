@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from recipe_scrapers import scrape_me
 import uvicorn
@@ -19,9 +19,15 @@ def read_root():
     return {"status": "ok", "service": "forkzero-scraper"}
 
 @app.get("/scrape")
-def scrape_recipe(url: str):
+def scrape_recipe(url: str, response: Response):
     try:
+        # Green Code: Cache Control
+        # Cache this result for 24 hours (86400 seconds) at the Edge.
+        # This prevents re-scraping the same URL if multiple users request it.
+        response.headers["Cache-Control"] = "public, max-age=86400, s-maxage=86400"
+        
         # Use recipe-scrapers library (Polyglot power!)
+        # This library internally uses BeautifulSoup4 with efficient selectors
         scraper = scrape_me(url)
         
         return {
