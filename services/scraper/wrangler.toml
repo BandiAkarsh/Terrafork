@@ -1,0 +1,13 @@
+name = "forkzero-scraper"
+main = "main.py"
+compatibility_date = "2024-03-20"
+compatibility_flags = ["python_workers"]
+
+# Green Code: Smart Placement
+# Moves the worker execution to the region closest to the backend DB/API it calls
+# (Not applicable for pure scraping, but good practice to enable)
+[placement]
+mode = "smart"
+
+[vars]
+ENVIRONMENT = "production"
