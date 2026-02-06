@@ -6,6 +6,37 @@
 		<link rel="manifest" href="%sveltekit.assets%/manifest.json" />
 		<meta name="theme-color" content="#10b981" />
 		<meta name="viewport" content="width=device-width" />
+		
+		<!-- 2026 Feature: View Transitions API -->
+		<meta name="view-transition" content="same-origin" />
+		
+		<!-- Green Code: Preconnect to API for faster requests -->
+		<link rel="preconnect" href="https://forkzero-scraper.yourname.workers.dev" />
+		<link rel="dns-prefetch" href="https://forkzero-scraper.yourname.workers.dev" />
+		
+		<!-- 2026 Feature: Speculation Rules API (prefetch on hover) -->
+		<script type="speculationrules">
+			{
+				"prerender": [{
+					"source": "list",
+					"urls": ["/", "/saved"]
+				}],
+				"prefetch": [{
+					"source": "document",
+					"where": {
+						"href_matches": "/*"
+					},
+					"eagerness": "conservative"
+				}]
+			}
+		</script>
+		
+		<!-- Green Code: CSS containment for performance -->
+		<style>
+			/* Containment for main app shell */
+			body { contain: layout style paint; }
+		</style>
+		
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover" class="bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 antialiased">

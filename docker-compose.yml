@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # Frontend
+  # Frontend - SvelteKit 5 Static Site
   web:
     build: 
       context: ./apps/web
@@ -13,9 +13,19 @@ services:
       - /app/node_modules
     environment:
       - PUBLIC_API_URL=http://localhost:8000
-      - PUBLIC_REALTIME_URL=ws://localhost:3000
+    # Green Code: Resource limits to prevent energy waste
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5173"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # Microservice 1: Scraper (Python)
+  # Microservice: Python Scraper (FastAPI)
   scraper:
     build: 
       context: ./services/scraper
@@ -24,13 +34,16 @@ services:
       - "8000:8000"
     volumes:
       - ./services/scraper:/app
-
-  # Microservice 2: Realtime (Node)
-  realtime:
-    build: 
-      context: ./services/realtime
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./services/realtime:/app
+    # Green Code: Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    # Green Code: Auto-shutdown after 1 hour of inactivity (optional)
+    # profiles: ["on-demand"]  # Uncomment to run only when needed

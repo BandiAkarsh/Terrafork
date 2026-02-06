@@ -11,11 +11,20 @@
     let saving = $state(false);
     let saveSuccess = $state(false);
     let dbReady = $state(false);
+    
+    // Green Code: Environment-guarded logging
+    const isDev = import.meta.env.DEV;
 
-    // Initialize DB on mount
-    onMount(async () => {
-        await initDb();
-        dbReady = true;
+    // Green Code: Initialize DB with cleanup
+    onMount(() => {
+        let cancelled = false;
+        
+        (async () => {
+            await initDb();
+            if (!cancelled) dbReady = true;
+        })();
+        
+        return () => { cancelled = true; };
     });
 
     // Green Code: Determine backend URL
@@ -39,17 +48,19 @@
             }
 
             const data = await res.json();
-            // Generate ID for the recipe
             recipe = {
                 ...data,
                 id: crypto.randomUUID(),
                 url: url
             };
             
-            console.log("Green Code: Recipe fetched with cached headers:", res.headers.get('Cache-Control'));
+            // Green Code: Log only in development
+            if (isDev) {
+                console.log("Green Code: Recipe fetched with cached headers:", res.headers.get('Cache-Control'));
+            }
 
         } catch (e) {
-            console.error(e);
+            if (isDev) console.error(e);
             error = e instanceof Error ? e.message : "Unknown error";
         } finally {
             loading = false;
@@ -65,9 +76,9 @@
         try {
             await saveRecipe(recipe);
             saveSuccess = true;
-            console.log("Green Code: Recipe saved locally (Zero Server)");
+            if (isDev) console.log("Green Code: Recipe saved locally (Zero Server)");
         } catch (e) {
-            console.error("Failed to save:", e);
+            if (isDev) console.error("Failed to save:", e);
             error = "Failed to save recipe";
         } finally {
             saving = false;

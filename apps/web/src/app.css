@@ -1,1 +1,60 @@
-@import "tailwindcss";
+/* 2026 Feature: CSS Layers for cascade management */
+@layer reset, base, components, utilities;
+
+@layer reset {
+  /* Minimal reset within layer */
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+}
+
+@layer base {
+  /* Tailwind CSS v4 */
+  @import "tailwindcss";
+  
+  /* Base styles */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* 2026 Feature: Popover API base styles */
+  [popover] {
+    inset: unset;
+  }
+  
+  /* Green Code: Respect reduced motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* 2026 Feature: Container Queries for component-based responsive design */
+  .recipe-card {
+    container-type: inline-size;
+    container-name: recipe;
+  }
+  
+  @container recipe (min-width: 400px) {
+    .recipe-card-content {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+}
+
+@layer utilities {
+  /* Green Code: Utility for view transitions */
+  .view-transition {
+    view-transition-name: page;
+  }
+  
+  /* Utility for content visibility (lazy rendering) */
+  .content-visibility-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 500px;
+  }
+}
