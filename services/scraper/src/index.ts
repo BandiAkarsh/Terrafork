@@ -89,6 +89,8 @@ async function scrapeRecipe(url: string): Promise<RecipeData> {
   // Try to extract JSON-LD structured data first (most reliable)
   const jsonLdMatch = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/gi);
   
+  let bestRecipe: RecipeData | null = null;
+
   if (jsonLdMatch) {
     for (const scriptTag of jsonLdMatch) {
       try {
@@ -100,7 +102,17 @@ async function scrapeRecipe(url: string): Promise<RecipeData> {
         
         for (const item of recipes) {
           if (item['@type'] === 'Recipe' || (Array.isArray(item['@type']) && item['@type'].includes('Recipe'))) {
-            return extractFromJsonLd(item, url);
+            const jsonRecipe = extractFromJsonLd(item, url);
+            
+            // If we found a recipe with ingredients AND instructions, it's a winner
+            if (jsonRecipe.ingredients.length > 0 && jsonRecipe.instructions) {
+              return jsonRecipe;
+            }
+            
+            // Otherwise keep it as a candidate but check for better ones or fallback
+            if (!bestRecipe || (jsonRecipe.ingredients.length > bestRecipe.ingredients.length)) {
+              bestRecipe = jsonRecipe;
+            }
           }
         }
       } catch (e) {
@@ -111,18 +123,36 @@ async function scrapeRecipe(url: string): Promise<RecipeData> {
   }
   
   // Fallback: Basic HTML parsing with regex
-  return extractFromHtml(html, url);
+  const htmlRecipe = extractFromHtml(html, url);
+  
+  // If we found a JSON-LD recipe but it was incomplete, merge with HTML results
+  if (bestRecipe) {
+    return {
+      ...bestRecipe,
+      // Prefer JSON-LD ingredients if available, otherwise HTML
+      ingredients: bestRecipe.ingredients.length > 0 ? bestRecipe.ingredients : htmlRecipe.ingredients,
+      // Prefer JSON-LD instructions if available, otherwise HTML
+      instructions: bestRecipe.instructions || htmlRecipe.instructions
+    };
+  }
+  
+  return htmlRecipe;
 }
 
 function extractFromJsonLd(data: any, url: string): RecipeData {
   const host = new URL(url).hostname.replace('www.', '');
   
+  const rawIngredients = data.recipeIngredient;
+  const ingredients = Array.isArray(rawIngredients) 
+    ? rawIngredients 
+    : (typeof rawIngredients === 'string' ? [rawIngredients] : []);
+
   return {
     title: data.name || 'Untitled Recipe',
     total_time: data.totalTime || data.cookTime || undefined,
     yields: data.recipeYield || data.servingSize || undefined,
     image: typeof data.image === 'string' ? data.image : data.image?.url || undefined,
-    ingredients: Array.isArray(data.recipeIngredient) ? data.recipeIngredient : [],
+    ingredients: ingredients,
     instructions: extractInstructions(data.recipeInstructions),
     nutrients: data.nutrition || undefined,
     host: host
@@ -136,12 +166,28 @@ function extractInstructions(instructions: any): string {
     return instructions;
   }
   
+  // Handle nested sections (HowToSection) or recursive arrays
   if (Array.isArray(instructions)) {
     return instructions.map((step: any, index: number) => {
       if (typeof step === 'string') return `${index + 1}. ${step}`;
-      if (step.text) return `${index + 1}. ${step.text}`;
+      
+      // Handle nested sections
+      if (step.itemListElement) {
+        const sectionTitle = step.name ? `\n### ${step.name}\n` : '';
+        return sectionTitle + extractInstructions(step.itemListElement);
+      }
+      
+      // Handle individual steps
+      const text = step.text || step.description || step.name;
+      if (text) return `${index + 1}. ${text}`;
+      
       return '';
     }).filter(Boolean).join('\n\n');
+  }
+  
+  // Handle single object with itemListElement (rare but valid)
+  if (instructions.itemListElement) {
+    return extractInstructions(instructions.itemListElement);
   }
   
   return '';
@@ -158,22 +204,38 @@ function extractFromHtml(html: string, url: string): RecipeData {
   // Try to find ingredients (common patterns)
   let ingredients: string[] = [];
   
-  // Pattern 1: Find ingredient list in UL after heading
-  const listMatch = html.match(/(?:ingredients?:?)\s*<\/h[1-6]>\s*<ul[^>]*>([\s\S]*?)<\/ul>/i);
-  if (listMatch && listMatch[1]) {
-    const items = listMatch[1].match(/<li[^>]*>(.*?)<\/li>/gi);
-    if (items) {
-      ingredients = items.map(item => cleanHtml(item));
+  // Strategy 1: Block patterns (find a container, then parse items)
+  // These patterns MUST NOT be global (no 'g' flag) as we use .match()
+  const ingredientBlockPatterns = [
+    /(?:ingredients?:?)\s*<\/h[1-6]>\s*<ul[^>]*>([\s\S]*?)<\/ul>/i
+  ];
+
+  for (const pattern of ingredientBlockPatterns) {
+    const listMatch = html.match(pattern);
+    if (listMatch && listMatch[1]) {
+      const items = listMatch[1].match(/<li[^>]*>(.*?)<\/li>/gi);
+      if (items) {
+        ingredients = items.map(item => cleanHtml(item));
+        if (ingredients.length > 0) break;
+      }
     }
   }
   
-  // Pattern 2: Find elements with ingredient class
+  // Strategy 2: Individual item patterns
+  // These patterns MUST be global (have 'g' flag) as we use .matchAll()
   if (ingredients.length === 0) {
-    const ingredientMatches = html.matchAll(/<li[^>]*class="[^"]*ingredient[^"]*"[^>]*>(.*?)<\/li>/gi);
-    for (const match of ingredientMatches) {
-      if (match[1]) {
-        ingredients.push(cleanHtml(match[1]));
+    const ingredientItemPatterns = [
+      /<li[^>]*class="[^"]*ingredient[^"]*"[^>]*>(.*?)<\/li>/gi
+    ];
+    
+    for (const pattern of ingredientItemPatterns) {
+      const matches = html.matchAll(pattern);
+      for (const match of matches) {
+        if (match[1]) {
+          ingredients.push(cleanHtml(match[1]));
+        }
       }
+      if (ingredients.length > 0) break;
     }
   }
   
