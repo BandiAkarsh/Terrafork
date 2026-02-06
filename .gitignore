@@ -17,3 +17,4 @@ env/
 
 # Docker
 .docker/AGENTS.md
+AGENTS.md
