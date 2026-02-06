@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { type Recipe } from '@forkzero/core-types';
+    import { type Recipe } from '@terrafork/core-types';
     import { getAllRecipes, deleteRecipe, initDb, exportAllRecipes } from '$lib/db';
     import { onMount } from 'svelte';
     import QRCode from 'qrcode';

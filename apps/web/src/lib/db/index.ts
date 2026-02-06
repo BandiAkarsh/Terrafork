@@ -1,5 +1,5 @@
 import { PGlite } from '@electric-sql/pglite';
-import type { Recipe } from '@forkzero/core-types';
+import type { Recipe } from '@terrafork/core-types';
 
 // Green Code: In-Browser Database (Zero Server)
 // PGLite runs PostgreSQL entirely in the browser via WebAssembly
@@ -12,7 +12,7 @@ export function initDb(): Promise<PGlite> {
     
     dbPromise = (async () => {
         const db = await PGlite.create({
-            dataDir: 'idb://forkzero-db',
+            dataDir: 'idb://terrafork-db',
             relaxedDurability: true // Green: Reduce disk writes for better performance
         });
         

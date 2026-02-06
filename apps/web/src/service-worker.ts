@@ -2,7 +2,7 @@
 import { build, files, version } from '$service-worker';
 
 // Green Code: Offline-first architecture
-const CACHE_NAME = `forkzero-${version}`;
+const CACHE_NAME = `terrafork-${version}`;
 const ASSETS = [...build, ...files];
 
 // Install: Cache all static assets

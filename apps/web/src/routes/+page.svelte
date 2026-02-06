@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { type Recipe } from '@forkzero/core-types';
+    import { type Recipe } from '@terrafork/core-types';
     import { saveRecipe, initDb } from '$lib/db';
     import { onMount } from 'svelte';
     
@@ -32,7 +32,7 @@
     // Python implementation available in services/scraper/*.py.bak for future migration
     const API_BASE = import.meta.env.DEV 
         ? 'http://localhost:8000' 
-        : 'https://forkzero-scraper.akarshbandi82.workers.dev';
+        : 'https://terrafork-scraper.akarshbandi82.workers.dev';
 
     async function handleFork() {
         if (!url) return;

@@ -1,4 +1,4 @@
-// FORKZERO RECIPE SCRAPER
+// TERRAFORK RECIPE SCRAPER
 // ======================
 // Current Implementation: TypeScript (Cloudflare Workers compatible)
 // Future Implementation: Python (when Cloudflare Workers Python supports packages)

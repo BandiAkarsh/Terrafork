@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.2.5",
-    "@forkzero/core-types": "workspace:*",
+    "@terrafork/core-types": "workspace:*",
     "@types/lz-string": "^1.5.0",
     "lz-string": "^1.5.0"
   },

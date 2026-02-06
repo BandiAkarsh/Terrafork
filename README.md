@@ -1,6 +1,6 @@
-# ForkZero: The Anti-Cloud Recipe Manager ♻️
+# TerraFork: The Anti-Cloud Recipe Manager ♻️
 
-ForkZero is a **Privacy-First**, **Local-First**, and **Carbon-Aware** recipe management platform built to demonstrate Sustainable Software Engineering (2026 Standards).
+TerraFork is a **Privacy-First**, **Local-First**, and **Carbon-Aware** recipe management platform built to demonstrate Sustainable Software Engineering (2026 Standards).
 
 [![Green Code](https://img.shields.io/badge/Green%20Code-Optimized-success)](https://sustainablewebdesign.org/)
 [![Svelte 5](https://img.shields.io/badge/Svelte-5-ff3e00)](https://svelte.dev/)
@@ -75,7 +75,7 @@ This project implements **4 Core Sustainability Principles**:
 ```bash
 # 1. Clone and install
 git clone <your-repo>
-cd forkzero-system
+cd terrafork-system
 pnpm install
 
 # 2. Install Python dependencies
@@ -131,7 +131,7 @@ pnpm build
 ### 1. Frontend (Cloudflare Pages)
 ```bash
 # Automatic via GitHub Actions
-# On push to main, deploys to: https://forkzero.pages.dev
+# On push to main, deploys to: https://terrafork.pages.dev
 ```
 
 **Setup:**
@@ -183,14 +183,14 @@ This project demonstrates:
 
 ## 📊 Carbon Impact
 
-| Metric | Traditional App | ForkZero | Savings |
+| Metric | Traditional App | TerraFork | Savings |
 |--------|----------------|----------|---------|
 | Server Runtime | 24/7 | Scale-to-Zero | 90% |
 | Database Queries | Cloud round-trip | Local (0ms) | 100% network |
 | Page Weight | 200-500kb | 45kb | 85% |
 | Mobile Battery | Standard | +30% OLED | Significant |
 
-**Verdict:** ForkZero emits ~0.02g CO2 per visit (95% cleaner than average).
+**Verdict:** TerraFork emits ~0.02g CO2 per visit (95% cleaner than average).
 
 ---
 

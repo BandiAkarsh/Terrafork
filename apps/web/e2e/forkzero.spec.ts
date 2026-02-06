@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('ForkZero - Green Code Recipe Manager', () => {
+test.describe('TerraFork - Green Code Recipe Manager', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('http://localhost:5173');
   });
 
   test('should display the main page with correct title', async ({ page }) => {
-    await expect(page.locator('h1')).toContainText('ForkZero');
+    await expect(page.locator('h1')).toContainText('TerraFork');
     await expect(page.locator('text=The Anti-Cloud Recipe Manager')).toBeVisible();
   });
 
