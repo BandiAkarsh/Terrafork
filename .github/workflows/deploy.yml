@@ -44,19 +44,31 @@ jobs:
           # Optional: Enable this if you want a separate comment on PRs
           # comment-on-pull-request: true
 
-  # Note: Python Worker deployment requires manual setup or separate workflow
-  # due to Python Workers being in beta and requiring pywrangler CLI
+  # Deploy TypeScript Worker
   deploy-worker:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Deploy Python Worker (Manual Step)
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
         run: |
-          echo "To deploy the Python Worker:"
-          echo "1. Install wrangler: npm install -g wrangler"
-          echo "2. Authenticate: wrangler login"
-          echo "3. Deploy: cd services/scraper && wrangler deploy"
-          echo ""
-          echo "Then update apps/web/src/routes/+page.svelte:"
-          echo "Change API_BASE to your deployed worker URL"
+          cd services/scraper
+          pnpm install
+
+      - name: Deploy TypeScript Worker to Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        workingDirectory: services/scraper

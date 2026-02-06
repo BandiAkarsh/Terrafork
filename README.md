@@ -13,7 +13,7 @@ TerraFork is a **Privacy-First**, **Local-First**, and **Carbon-Aware** recipe m
 This project implements **4 Core Sustainability Principles**:
 
 ### 1. Zero-Server Idle ☁️
-- **Architecture:** Cloudflare Workers (Python) + Cloudflare Pages (Static)
+- **Architecture:** Cloudflare Workers (TypeScript) + Cloudflare Pages (Static)
 - **Impact:** Backend scales to zero when not in use. No wasteful 24/7 servers.
 - **Energy Savings:** ~90% reduction vs traditional VPS hosting
 
@@ -53,7 +53,7 @@ This project implements **4 Core Sustainability Principles**:
 │                      BACKEND                                │
 │                  (Cloudflare Workers)                       │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │  Python 3.11 + FastAPI + BeautifulSoup4            │   │
+│  │  TypeScript + Cheerio + Cloudflare Workers          │   │
 │  │  - Scrapes recipe sites                            │   │
 │  │  - Caches results for 24 hours (Green Code)        │   │
 │  │  - Deployed to 300+ Edge locations                 │   │
@@ -67,7 +67,6 @@ This project implements **4 Core Sustainability Principles**:
 
 ### Prerequisites
 - Node.js v20+
-- Python 3.11+
 - pnpm: `npm install -g pnpm`
 
 ### Local Development
@@ -78,19 +77,13 @@ git clone <your-repo>
 cd terrafork-system
 pnpm install
 
-# 2. Install Python dependencies
-cd services/scraper
-pip install -r requirements.txt
-cd ../..
-
-# 3. Start all services
+# 2. Start all services
 docker-compose up
 ```
 
 ### Access Points
 - **Frontend:** http://localhost:5173
 - **Scraper API:** http://localhost:8000
-- **API Docs:** http://localhost:8000/docs
 
 ---
 
@@ -98,7 +91,7 @@ docker-compose up
 
 ### Fork a Recipe
 1. Paste any recipe URL (e.g., AllRecipes, Food Network)
-2. Click **"Fork"** - The Python scraper extracts clean data
+2. Click **"Fork"** - The TypeScript scraper extracts clean data
 3. Click **"Save"** - Stored locally in your browser (PGLite)
 4. Access anytime at **"My Recipes"**
 
@@ -142,9 +135,10 @@ pnpm build
    - Build command: `cd apps/web && pnpm build`
    - Output: `apps/web/build`
 
-### 2. Backend (Cloudflare Workers - Python)
+### 2. Backend (Cloudflare Workers - TypeScript)
 ```bash
 cd services/scraper
+pnpm install
 wrangler login
 wrangler deploy
 ```
@@ -167,7 +161,7 @@ CLOUDFLARE_ACCOUNT_ID   # From Cloudflare dashboard sidebar
 
 This project demonstrates:
 
-✅ **Polyglot Development:** TypeScript (Frontend) + Python (Backend)  
+✅ **TypeScript Full Stack:** Frontend + Backend in TypeScript  
 ✅ **Green Software Engineering:** Carbon-aware architecture decisions  
 ✅ **Local-First Architecture:** Client-side database (PGLite)  
 ✅ **Edge Computing:** Cloudflare Workers global deployment  

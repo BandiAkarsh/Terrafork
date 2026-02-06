@@ -31,27 +31,32 @@ jobs:
         run: |
           cd apps/web
           pnpm check
-          # pnpm lint (Enable later when eslint is configured)
+          pnpm run lint
 
-  # 2. Backend Check (Python)
+  # 2. Backend Check (TypeScript)
   scraper-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          version: 9
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
 
       - name: Install dependencies
         run: |
           cd services/scraper
-          pip install -r requirements.txt
-          pip install ruff
+          pnpm install
 
-      - name: Lint with Ruff (Green Code: Fast Rust-based linter)
+      - name: Type Check & Lint (Scraper)
         run: |
           cd services/scraper
-          ruff check .
+          pnpm run lint
+          pnpm run check
