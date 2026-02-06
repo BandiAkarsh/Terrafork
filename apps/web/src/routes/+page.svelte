@@ -28,9 +28,11 @@
     });
 
     // Green Code: Determine backend URL
+    // TypeScript implementation active
+    // Python implementation available in services/scraper/*.py.bak for future migration
     const API_BASE = import.meta.env.DEV 
         ? 'http://localhost:8000' 
-        : 'https://forkzero-scraper.yourname.workers.dev';
+        : 'https://forkzero-scraper.akarshbandi82.workers.dev';
 
     async function handleFork() {
         if (!url) return;

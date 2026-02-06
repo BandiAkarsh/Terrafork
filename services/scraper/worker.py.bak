@@ -1,0 +1,44 @@
+from fastapi import FastAPI, HTTPException, Response
+from fastapi.middleware.cors import CORSMiddleware
+from recipe_scrapers import scrape_me
+
+app = FastAPI()
+
+# Allow CORS - Update with your actual Pages domain when deployed
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Change to specific domain in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/")
+def read_root():
+    return {"status": "ok", "service": "forkzero-scraper"}
+
+@app.get("/scrape")
+def scrape_recipe(url: str, response: Response):
+    try:
+        # Green Code: Cache Control
+        response.headers["Cache-Control"] = "public, max-age=86400, s-maxage=86400"
+        
+        # Use recipe-scrapers library
+        scraper = scrape_me(url)
+        
+        return {
+            "title": scraper.title(),
+            "total_time": scraper.total_time(),
+            "yields": scraper.yields(),
+            "ingredients": scraper.ingredients(),
+            "instructions": scraper.instructions(),
+            "image": scraper.image(),
+            "host": scraper.host(),
+            "nutrients": scraper.nutrients()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+# Cloudflare Workers Python entry point
+# Expose the ASGI app for the Workers runtime
+handler = app
