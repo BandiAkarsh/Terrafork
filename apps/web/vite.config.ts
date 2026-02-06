@@ -10,16 +10,7 @@ export default defineConfig({
         // Green Code: Efficient minification
         minify: 'esbuild',
         cssMinify: true,
-        rollupOptions: {
-            output: {
-                manualChunks: {
-                    // Green Code: Split database chunk for lazy loading
-                    db: ['@electric-sql/pglite'],
-                    // Split QR code libraries (used less frequently)
-                    sync: ['qrcode', 'lz-string']
-                }
-            }
-        }
+
     },
     // Green Code: Optimize deps for faster dev server
     optimizeDeps: {

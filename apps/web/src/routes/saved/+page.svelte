@@ -99,9 +99,24 @@
     </div>
 
     {#if showQR}
-        <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onclick={() => showQR = false}>
-            <div class="bg-zinc-900 p-8 rounded-2xl max-w-md w-full" onclick={(e) => e.stopPropagation()}>
-                <h2 class="text-xl font-bold text-white mb-4 text-center">Scan with Your Phone</h2>
+        <div 
+            class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" 
+            onclick={() => showQR = false}
+            onkeydown={(e) => e.key === 'Escape' && (showQR = false)}
+            role="button"
+            tabindex="0"
+            aria-label="Close QR code modal"
+        >
+            <div 
+                class="bg-zinc-900 p-8 rounded-2xl max-w-md w-full" 
+                onclick={(e) => e.stopPropagation()}
+                onkeydown={(e) => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="qr-title"
+                tabindex="-1"
+            >
+                <h2 id="qr-title" class="text-xl font-bold text-white mb-4 text-center">Scan with Your Phone</h2>
                 <img src={qrDataUrl} alt="QR Code" class="w-full rounded-lg" />
                 <p class="text-zinc-400 text-sm mt-4 text-center">
                     This QR code contains all your recipes compressed.<br>
