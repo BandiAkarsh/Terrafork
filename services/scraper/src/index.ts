@@ -156,20 +156,25 @@ function extractFromHtml(html: string, url: string): RecipeData {
   const title = h1Match ? cleanHtml(h1Match[1]) : (titleMatch ? cleanHtml(titleMatch[1]) : 'Untitled Recipe');
   
   // Try to find ingredients (common patterns)
-  const ingredientPatterns = [
-    /(?:ingredients?:?)\s*<\/h[1-6]>\s*<ul[^>]*>([\s\S]*?)<\/ul>/i,
-    /<li[^>]*class="[^"]*ingredient[^"]*"[^>]*>(.*?)<\/li>/gi
-  ];
-  
   let ingredients: string[] = [];
-  for (const pattern of ingredientPatterns) {
-    const matches = html.matchAll(pattern);
-    for (const match of matches) {
+  
+  // Pattern 1: Find ingredient list in UL after heading
+  const listMatch = html.match(/(?:ingredients?:?)\s*<\/h[1-6]>\s*<ul[^>]*>([\s\S]*?)<\/ul>/i);
+  if (listMatch && listMatch[1]) {
+    const items = listMatch[1].match(/<li[^>]*>(.*?)<\/li>/gi);
+    if (items) {
+      ingredients = items.map(item => cleanHtml(item));
+    }
+  }
+  
+  // Pattern 2: Find elements with ingredient class
+  if (ingredients.length === 0) {
+    const ingredientMatches = html.matchAll(/<li[^>]*class="[^"]*ingredient[^"]*"[^>]*>(.*?)<\/li>/gi);
+    for (const match of ingredientMatches) {
       if (match[1]) {
         ingredients.push(cleanHtml(match[1]));
       }
     }
-    if (ingredients.length > 0) break;
   }
   
   // Try to find instructions
