@@ -16,5 +16,10 @@ env/
 .svelte-kit/
 
 # Docker
-.docker/AGENTS.md
+.docker/
+
+# Backup files
+*.bak
+
+# Internal documentation
 AGENTS.md

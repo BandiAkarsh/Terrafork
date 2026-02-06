@@ -2,11 +2,11 @@
 // ======================
 // Current Implementation: TypeScript (Cloudflare Workers compatible)
 // Future Implementation: Python (when Cloudflare Workers Python supports packages)
-//
-// To switch to Python in the future:
-// 1. Uncomment the Python files (main.py, worker.py)
-// 2. Update wrangler.toml to point to Python entry
-// 3. Deploy with: wrangler deploy
+
+// Security Configuration
+const ALLOWED_ORIGIN = 'https://terrafork.pages.dev';
+const ALLOWED_METHODS = 'GET, OPTIONS';
+const ALLOWED_HEADERS = 'Content-Type';
 
 export interface Env {
   // Add any environment variables here
@@ -23,12 +23,60 @@ export interface RecipeData {
   host?: string;
 }
 
+// Security: Validate URL to prevent SSRF attacks
+function validateUrl(urlString: string): string {
+  try {
+    const url = new URL(urlString);
+    
+    // Block dangerous protocols
+    const allowedProtocols = ['http:', 'https:'];
+    if (!allowedProtocols.includes(url.protocol)) {
+      throw new Error('Invalid protocol. Only HTTP and HTTPS are allowed.');
+    }
+    
+    // Block private/internal IP addresses
+    const hostname = url.hostname.toLowerCase();
+    const blockedHosts = [
+      'localhost',
+      '127.0.0.1',
+      '0.0.0.0',
+      '::1',
+      '[::1]'
+    ];
+    
+    if (blockedHosts.includes(hostname)) {
+      throw new Error('Cannot scrape local/internal addresses');
+    }
+    
+    // Block private IP ranges
+    const privateIpPatterns = [
+      /^10\./,
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
+      /^192\.168\./,
+      /^169\.254\./,
+      /^127\./,
+      /^0\./
+    ];
+    
+    if (privateIpPatterns.some(pattern => pattern.test(hostname))) {
+      throw new Error('Cannot scrape private IP ranges');
+    }
+    
+    return urlString;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Invalid URL format');
+  }
+}
+
 // Green Code: Parse recipe using lightweight cheerio
 async function scrapeRecipe(url: string): Promise<RecipeData> {
   // Fetch the recipe page
   const response = await fetch(url, {
     headers: {
-      'User-Agent': 'Mozilla/5.0 (compatible; ForkZero/1.0; +https://forkzero.pages.dev)'
+      'User-Agent': 'Mozilla/5.0 (compatible; TerraFork/1.0; +https://terrafork.pages.dev)'
     }
   });
   
@@ -153,6 +201,15 @@ function cleanHtml(html: string): string {
     .trim();
 }
 
+// Helper function for CORS headers
+function getCorsHeaders(): Record<string, string> {
+  return {
+    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
+    'Access-Control-Allow-Methods': ALLOWED_METHODS,
+    'Access-Control-Allow-Headers': ALLOWED_HEADERS
+  };
+}
+
 // Main request handler
 export default {
   async fetch(request: Request, env: Env, ctx: any): Promise<Response> {
@@ -160,11 +217,7 @@ export default {
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         status: 204,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type'
-        }
+        headers: getCorsHeaders()
       });
     }
     
@@ -174,12 +227,12 @@ export default {
     if (url.pathname === '/') {
       return new Response(JSON.stringify({ 
         status: 'ok', 
-        service: 'forkzero-scraper-ts',
+        service: 'terrafork-scraper-ts',
         note: 'TypeScript implementation - Python version available in future'
       }), {
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
+          ...getCorsHeaders()
         }
       });
     }
@@ -193,31 +246,36 @@ export default {
           status: 400,
           headers: {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
+            ...getCorsHeaders()
           }
         });
       }
       
       try {
-        const recipe = await scrapeRecipe(targetUrl);
+        // Security: Validate URL before scraping
+        const validatedUrl = validateUrl(targetUrl);
+        const recipe = await scrapeRecipe(validatedUrl);
         
         // Green Code: Cache for 24 hours
         return new Response(JSON.stringify(recipe), {
           headers: {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
+            ...getCorsHeaders(),
             'Cache-Control': 'public, max-age=86400, s-maxage=86400'
           }
         });
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const statusCode = errorMessage.includes('Invalid') || errorMessage.includes('Cannot scrape') ? 400 : 500;
+        
         return new Response(JSON.stringify({ 
           error: 'Failed to scrape recipe',
-          details: error instanceof Error ? error.message : 'Unknown error'
+          details: errorMessage
         }), {
-          status: 400,
+          status: statusCode,
           headers: {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
+            ...getCorsHeaders()
           }
         });
       }
@@ -228,7 +286,7 @@ export default {
       status: 404,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
+        ...getCorsHeaders()
       }
     });
   }

@@ -42,6 +42,11 @@
 
     // Green Code: Local state update instead of full reload (O(1) vs O(n))
     async function handleDelete(id: string) {
+        // Security: Confirm before destructive action
+        if (!confirm('Are you sure you want to delete this recipe? This action cannot be undone.')) {
+            return;
+        }
+        
         deletingId = id;
         try {
             await deleteRecipe(id);
@@ -49,6 +54,7 @@
             recipes = recipes.filter(r => r.id !== id);
         } catch (e) {
             if (isDev) console.error("Failed to delete:", e);
+            alert('Failed to delete recipe. Please try again.');
         } finally {
             deletingId = null;
         }
