@@ -16,4 +16,4 @@ env/
 .svelte-kit/
 
 # Docker
-.docker/
+.docker/AGENTS.md
