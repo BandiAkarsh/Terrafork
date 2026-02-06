@@ -78,7 +78,7 @@ cd terrafork-system
 pnpm install
 
 # 2. Start all services
-docker-compose up
+docker compose up
 ```
 
 ### Access Points
