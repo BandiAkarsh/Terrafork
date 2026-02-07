@@ -5,7 +5,8 @@
     import QRCode from 'qrcode';
     import pkg from 'lz-string';
     const { compressToEncodedURIComponent } = pkg;
-    
+    import InstallPrompt from '$lib/components/InstallPrompt.svelte';
+
     // Svelte 5 Runes
     let recipes = $state<Recipe[]>([]);
     let loading = $state(true);
@@ -13,8 +14,10 @@
     let expandedId = $state<string | null>(null);
     let showQR = $state(false);
     let qrDataUrl = $state('');
+    let qrTitle = $state('');
     let isExporting = $state(false);
-    
+    let generatingQRId = $state<string | null>(null);
+
     const isDev = import.meta.env.DEV;
 
     onMount(() => {
@@ -77,6 +80,7 @@
                 margin: 2,
                 errorCorrectionLevel: 'M' // Medium (good balance of density/reliability)
             });
+            qrTitle = `All ${allRecipes.length} Recipes`;
             showQR = true;
         } catch (e) {
             if (isDev) console.error("Failed to generate QR:", e);
@@ -84,9 +88,32 @@
             isExporting = false;
         }
     }
+
+    // Generate QR for individual recipe
+    async function generateRecipeQR(recipe: Recipe) {
+        generatingQRId = recipe.id;
+        try {
+            const compressed = compressToEncodedURIComponent(JSON.stringify(recipe));
+            const importUrl = `${window.location.origin}/recipe/${recipe.id}?data=${compressed}`;
+            qrDataUrl = await QRCode.toDataURL(importUrl, {
+                width: 400,
+                margin: 2,
+                errorCorrectionLevel: 'M'
+            });
+            qrTitle = recipe.title;
+            showQR = true;
+        } catch (e) {
+            if (isDev) console.error("Failed to generate QR:", e);
+        } finally {
+            generatingQRId = null;
+        }
+    }
+
 </script>
 
 <main class="container mx-auto px-4 py-12 max-w-4xl">
+    <InstallPrompt />
+
     <div class="flex justify-between items-center mb-8">
         <h1 class="text-4xl font-black tracking-tight text-white">
             My Saved Recipes
@@ -97,10 +124,10 @@
                 disabled={isExporting || recipes.length === 0}
                 class="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-white rounded-lg text-sm transition-colors"
             >
-                {isExporting ? 'Generating...' : '📱 Sync to Phone'}
+                {isExporting ? 'Generating...' : '📱 Sync All'}
             </button>
-            <a 
-                href="/" 
+            <a
+                href="/"
                 class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-black font-bold rounded-lg text-sm transition-colors"
             >
                 + Fork New
@@ -109,16 +136,16 @@
     </div>
 
     {#if showQR}
-        <div 
-            class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" 
+        <div
+            class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
             onclick={() => showQR = false}
             onkeydown={(e) => e.key === 'Escape' && (showQR = false)}
             role="button"
             tabindex="0"
             aria-label="Close QR code modal"
         >
-            <div 
-                class="bg-zinc-900 p-8 rounded-2xl max-w-md w-full" 
+            <div
+                class="bg-zinc-900 p-8 rounded-2xl max-w-md w-full"
                 onclick={(e) => e.stopPropagation()}
                 onkeydown={(e) => e.stopPropagation()}
                 role="dialog"
@@ -126,16 +153,15 @@
                 aria-labelledby="qr-title"
                 tabindex="-1"
             >
-                <h2 id="qr-title" class="text-xl font-bold text-white mb-4 text-center">📱 Sync to Phone</h2>
-                <img src={qrDataUrl} alt="QR Code" class="w-full rounded-lg" />
+                <h2 id="qr-title" class="text-xl font-bold text-white mb-4 text-center">📱 {qrTitle}</h2>
+                <img src={qrDataUrl} alt="QR Code for {qrTitle}" class="w-full rounded-lg" />
                 <p class="text-zinc-400 text-sm mt-4 text-center">
-                    Scan this QR code with your phone camera.<br>
-                    Your recipes will open in your phone's browser.
+                    Scan with phone camera to import
                 </p>
-                <p class="text-emerald-400 text-xs mt-3 text-center">
-                    🌱 Zero server storage - completely private
+                <p class="text-emerald-400 text-xs mt-2 text-center">
+                    🌱 Zero server - completely private
                 </p>
-                <button 
+                <button
                     onclick={() => showQR = false}
                     class="w-full mt-4 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg transition-colors"
                 >
@@ -179,6 +205,14 @@
                             </p>
                         </div>
                         <div class="flex gap-2 ml-4">
+                            <button
+                                onclick={() => generateRecipeQR(recipe)}
+                                disabled={generatingQRId === recipe.id}
+                                class="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-sm transition-colors"
+                                title="Share via QR"
+                            >
+                                {generatingQRId === recipe.id ? '...' : '📱'}
+                            </button>
                             <button
                                 onclick={() => expandedId = expandedId === recipe.id ? null : recipe.id}
                                 class="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-sm transition-colors"

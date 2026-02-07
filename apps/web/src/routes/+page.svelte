@@ -2,7 +2,8 @@
     import { type Recipe } from '@terrafork/core-types';
     import { saveRecipe, initDb } from '$lib/db';
     import { onMount } from 'svelte';
-    
+    import InstallPrompt from '$lib/components/InstallPrompt.svelte';
+
     // Svelte 5 Runes
     let url = $state("");
     let loading = $state(false);
@@ -92,6 +93,8 @@
     </h1>
     <p class="text-sm text-zinc-500 mt-1">The Anti-Cloud Recipe Manager</p>
 </div>
+
+<InstallPrompt />
 
 <main class="container mx-auto px-4 py-6 md:py-12 max-w-2xl">
     <div class="text-center space-y-6">
