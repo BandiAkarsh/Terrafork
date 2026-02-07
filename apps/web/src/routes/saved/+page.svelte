@@ -3,7 +3,8 @@
     import { getAllRecipes, deleteRecipe, initDb, exportAllRecipes } from '$lib/db';
     import { onMount } from 'svelte';
     import QRCode from 'qrcode';
-    import { compressToEncodedURIComponent } from 'lz-string';
+    import pkg from 'lz-string';
+    const { compressToEncodedURIComponent } = pkg;
     
     // Svelte 5 Runes
     let recipes = $state<Recipe[]>([]);
