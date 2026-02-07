@@ -30,7 +30,7 @@
     // Green Code: Determine backend URL
     const API_BASE = import.meta.env.DEV 
         ? 'http://localhost:8788' 
-        : 'https://terrafork-scraper.workers.dev';
+        : 'https://terrafork-scraper.akarshbandi82.workers.dev';
 
     async function handleFork() {
         if (!url) return;
