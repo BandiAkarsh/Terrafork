@@ -69,8 +69,10 @@
             const allRecipes = await exportAllRecipes();
             // Green Code: Compress data to minimize QR size (less scanning energy)
             const compressed = compressToEncodedURIComponent(JSON.stringify(allRecipes));
+            // Create import URL that opens in phone browser
+            const importUrl = `${window.location.origin}/import?data=${compressed}`;
             // Generate QR code with medium error correction
-            qrDataUrl = await QRCode.toDataURL(compressed, {
+            qrDataUrl = await QRCode.toDataURL(importUrl, {
                 width: 400,
                 margin: 2,
                 errorCorrectionLevel: 'M' // Medium (good balance of density/reliability)
@@ -124,11 +126,14 @@
                 aria-labelledby="qr-title"
                 tabindex="-1"
             >
-                <h2 id="qr-title" class="text-xl font-bold text-white mb-4 text-center">Scan with Your Phone</h2>
+                <h2 id="qr-title" class="text-xl font-bold text-white mb-4 text-center">📱 Sync to Phone</h2>
                 <img src={qrDataUrl} alt="QR Code" class="w-full rounded-lg" />
                 <p class="text-zinc-400 text-sm mt-4 text-center">
-                    This QR code contains all your recipes compressed.<br>
-                    Zero server communication - completely private.
+                    Scan this QR code with your phone camera.<br>
+                    Your recipes will open in your phone's browser.
+                </p>
+                <p class="text-emerald-400 text-xs mt-3 text-center">
+                    🌱 Zero server storage - completely private
                 </p>
                 <button 
                     onclick={() => showQR = false}
