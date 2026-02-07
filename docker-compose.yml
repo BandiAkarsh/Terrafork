@@ -2,10 +2,10 @@ services:
   # Frontend - SvelteKit 5 Static Site
   web:
     build:
-      context: ./apps/web
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/web/Dockerfile
     ports:
-      - "5173:5173"
+      - "5175:5175"
     volumes:
       - ./apps/web:/app
       - /app/node_modules

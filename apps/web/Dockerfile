@@ -3,9 +3,6 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm
-
 # Copy workspace configuration
 COPY pnpm-workspace.yaml package.json ./
 
@@ -13,15 +10,22 @@ COPY pnpm-workspace.yaml package.json ./
 COPY packages/core-types/package.json ./packages/core-types/
 COPY apps/web/package.json ./apps/web/
 
-# Install dependencies (use mount cache for faster builds)
-RUN pnpm install --frozen-lockfile
+# Install pnpm globally
+RUN npm install -g pnpm
+
+# Install dependencies in workspace root
+RUN pnpm install
 
 # Copy source code
 COPY packages/core-types ./packages/core-types
 COPY apps/web ./apps/web
 
-# Build the app
-RUN cd apps/web && pnpm build
+# Copy node_modules to apps/web so build can find dependencies
+RUN cp -r /app/node_modules /app/apps/node_modules
+
+# Build the web app from correct directory
+WORKDIR /app/apps/web
+RUN pnpm build
 
 # Production stage - minimal nginx image (Green Code: smaller footprint)
 FROM nginx:alpine
@@ -35,7 +39,7 @@ RUN echo 'server { \
     location / { \
         root /usr/share/nginx/html; \
         try_files $uri $uri/ /index.html; \
-        # Green Code: Cache static assets
+        # Green Code: Cache static assets \
         location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ { \
             expires 1y; \
             add_header Cache-Control "public, immutable"; \
